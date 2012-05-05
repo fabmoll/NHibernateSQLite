@@ -1,4 +1,4 @@
 NHibernateSQLite
 ================
 
-Sample NHibernate with SQLite
+Sample NHibernate with SQLite.
