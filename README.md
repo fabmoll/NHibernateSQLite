@@ -136,3 +136,86 @@ public class CustomerRepository : SqLiteRepository<Customer>, ICustomerRepositor
 }
 ```
 
+That’s in this final repository that you’ll add specific functionalities like: GetByCode, GeByName, …
+
+Did you see the type of the _SqLiteRepository_ contained object class? Yes this is the type of our _Customer_ model.  For example, if you want to create the address repository for the address model, you’ll use something like this:
+
+```c#
+public class AddressRepository : SqLiteRepository<Address>, IAddressRepository
+{
+...
+}
+```
+
+Now you’ll probably ask me why do you use the _ICustomerRepository_ interface.  Well it’s a habit and I’ll not use it here but I need that kind of interface when it’s time to mock in my unit test.
+
+```c#
+public interface ICustomerRepository : IRepository<Customer>
+{
+	IEnumerable<Customer> GetAll();
+}
+```
+
+The Data.Tests project
+----------------------
+
+To test the data access layer I wanted to have an in memory database created when needed in my unit test then disposed when the unit test is over.
+
+The _SqLiteSessionFactory_ class (below) will generate an in memory SQLite database based on the model.
+
+```c#
+public class SqLiteSessionFactory : IDisposable
+{
+	private Configuration _configuration;
+	private ISessionFactory _sessionFactory;
+
+	public ISession Session { get; set; }
+
+	public SqLiteSessionFactory()
+	{
+		_sessionFactory = CreateSessionFactory();
+		Session = _sessionFactory.OpenSession();
+		ExportSchema();
+	}
+
+	private void ExportSchema()
+	{
+		var export = new SchemaExport(_configuration);
+		//export.SetOutputFile(@"..\..\..\database\initial.database\create.objects.sql").Execute(true, true, false,
+		//                                                                                       Session.Connection, null);
+
+		using (var file = new FileStream(@"..\..\..\database\initial.database\create.objects.sql", FileMode.Create, FileAccess.Write))
+		using (var sw = new StreamWriter(file))
+		{
+			export.Execute(true, true, false, Session.Connection, sw);
+			sw.Close();
+		}
+	}
+
+	private ISessionFactory CreateSessionFactory()
+	{
+		return Fluently.Configure()
+					.Database(SQLiteConfiguration.Standard.InMemory().ShowSql())
+					.Mappings(m =>
+					{
+						m.FluentMappings.Conventions.Setup(c => c.Add(AutoImport.Never()));
+						m.FluentMappings.Conventions.AddAssembly(Assembly.GetExecutingAssembly());
+						m.HbmMappings.AddFromAssembly(Assembly.GetExecutingAssembly());
+
+						var assembly = Assembly.Load("NHibernateSQLite.Data");
+						m.FluentMappings.Conventions.AddAssembly(assembly);
+						m.FluentMappings.AddFromAssembly(assembly);
+						m.HbmMappings.AddFromAssembly(assembly);
+
+					})
+					.ExposeConfiguration(cfg => _configuration = cfg)
+					.BuildSessionFactory();
+	}
+
+	public void Dispose()
+	{
+		Session.Dispose();
+	}
+}
+```
+
