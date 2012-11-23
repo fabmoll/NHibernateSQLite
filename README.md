@@ -219,3 +219,73 @@ public class SqLiteSessionFactory : IDisposable
 }
 ```
 
+When our test will run, we’ll create an instance of the _SqLiteSessionFactory_ class.  The default constructor will call two methods:
+
+* ExportSchema
+* CreateSessionFactory
+
+The _ExportSchema_ method is used to create the in memory database based on the mapping and to create the SQL script file in a specific folder ("..\..\..\database\initial.database\create.objects.sql").
+
+The following line worked only once:
+
+```c#
+export.SetOutputFile(@"..\..\..\database\initial.database\create.objects.sql").Execute(true, true, false, Session.Connection, null);
+```
+
+And I still don’t know why it doesn’t work anymore… So I used a StreamWriter to create the SQL Script file:
+
+```c#
+using (var file = new FileStream(@"..\..\..\database\initial.database\create.objects.sql", FileMode.Create, FileAccess.Write))
+{
+	using (var sw = new StreamWriter(file))
+	{
+		export.Execute(true, true, false, Session.Connection, sw);
+		sw.Close();
+	}
+}
+```
+
+The _CreateSessionFactory_ method is used to look in the assembly where the mapping is located.  With this method NHibernate will be able to generate the database schema.
+
+
+Now we need to create the unit test to check if it works! Here is the _CustomerRepositoryFixture_ class:
+
+```c#
+[TestFixture]
+public class CustomerRepositoryFixture
+{
+	private ICustomerRepository Repository { get; set; }
+	private SqLiteSessionFactory SqLiteSessionFactory { get; set; }
+
+	[SetUp]
+	public void SetUp()
+	{
+		SqLiteSessionFactory = new SqLiteSessionFactory();
+		Repository = new CustomerRepository { Session = SqLiteSessionFactory.Session };
+	}
+
+	[Test]
+	public void SaveTest()
+	{
+		var customer = new Customer { Code = "Code1", Name = "Name1" };
+
+		Assert.That(customer.Id, Is.EqualTo(0));
+
+		Repository.Save(customer);
+
+		SqLiteSessionFactory.Session.Flush();
+
+		var customer2 = from c in Repository.CreateQuery()
+						 select c;
+		Assert.That(customer2.First().Id, Is.GreaterThan(0));
+	}
+
+	[TearDown]
+	public void TearDown()
+	{
+		SqLiteSessionFactory.Dispose();
+	}
+}
+```
+
+The _SaveTest_ method will create an instance of our model and we’ll save it in the database.  Before to save the _Id_ property must be equal to 0 because it’s not assigned and after the save the _Id_ property must be different to 0 (because we specified in the mapping that the Id property is an identity).
