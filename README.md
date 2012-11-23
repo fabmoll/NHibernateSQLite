@@ -75,3 +75,43 @@ The mapping will be used by NHibernate to map the model with the database and yo
 
 Most of the time (every time I need to access a database) I try to use the Repository Pattern.  I’ll show you how you can use a Generic Repository Pattern to make an abstraction layer on top of SQLite.
 
+
+First, we need to create an interface which will be our data access facade:
+
+```c#
+public interface IRepository<T> where T : class
+{
+	IQueryable<T> CreateQuery();
+	T Save(T entity);
+}
+```
+
+It’s enough for our test but to complete the interface you should add more functionalities like: Delete, GetById, GetAll, …
+
+The _IRepository_ interface is a common interface which can be implemented by different repositories and it will only contain basic functionalities.
+
+To execute those functionalities, we’ll create the following implementation of the _IRepository_ interface:
+
+```c#
+public class SqLiteRepository<T> : IRepository<T> where T : class
+{
+	public ISession Session { get; set; }
+
+	#region IRepository members
+
+	public IQueryable<T> CreateQuery()
+	{
+		return Session.Query<T>();
+	}
+
+	public T Save(T entity)
+	{
+		Session.Save(entity);
+
+		return entity;
+	} 
+
+	#endregion
+}
+```
+
