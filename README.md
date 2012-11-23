@@ -115,3 +115,24 @@ public class SqLiteRepository<T> : IRepository<T> where T : class
 }
 ```
 
+Like you can see, I added the _ISession_ property to use the NHibernate persistence service.
+
+But how can we use the _SqLiteRepository_ class to get our _Customer_ entity from the database? For that job, we’ll inherit from the _SqLiteRepository_ class to create the _CustomerRepository_ class.
+
+```c#
+public class CustomerRepository : SqLiteRepository<Customer>, ICustomerRepository
+{
+	#region ICustomerRepository members
+
+	public IEnumerable<Customer> GetAll()
+	{
+		var query = from c in CreateQuery()
+				select c;
+
+		return query;
+	} 
+
+	#endregion
+}
+```
+
