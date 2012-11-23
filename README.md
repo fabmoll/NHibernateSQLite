@@ -56,3 +56,22 @@ The Data project
 Before to start you need to add a reference to NHibernate and FluentNHibernate.  NHibernate will be used by the repository and FluentNHibernate will be used for the mapping.
 
 NHibernate and FluentNHibernate are already in the project but you can find these files on [NuGet](http://nuget.org/)
+
+Like I said , I’m using FluentNHibernate for the mapping.  If you don’t know how it works you should check the [Fluent NHibernate wiki](https://github.com/jagregory/fluent-nhibernate/wiki/Getting-started)
+
+```c#
+public sealed class CustomerMap : ClassMap<Customer>
+{
+	public CustomerMap()
+	{
+		Id(x => x.Id).GeneratedBy.Identity();
+		Map(x => x.Code);
+		Map(x => x.Name);
+	}
+}
+```
+
+The mapping will be used by NHibernate to map the model with the database and you’ll see later that the mapping is used to create the database schema.
+
+Most of the time (every time I need to access a database) I try to use the Repository Pattern.  I’ll show you how you can use a Generic Repository Pattern to make an abstraction layer on top of SQLite.
+
